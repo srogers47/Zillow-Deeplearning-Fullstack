@@ -4,20 +4,46 @@ services:
   db:
     image: postgres
     volumes:
-      - ./data/db:/var/lib/postgresql/data
+            - .:/data/db/var/run/postgresql/.s.PGSQL.5432
     environment:
-      #NOTE: Early stages of dev. TODO: In production compose file use env variables to pass in credentials.
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
   web:
     build: .
     command: python manage.py runserver 0.0.0.0:8000
+
     volumes:
-      - .:/code
+      - .:/myproject
     ports:
       - "8000:8000"
     depends_on:
       - db
+      - redis
+
+  redis:
+    image: redis:alpine
+  celery:
+    build: .
+    restart: always  
+    command: celery -A myproject worker -l info
+    volumes:
+      - ./myproject/:/usr/src/app/
+    environment:
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+    depends_on:
+      - redis
+  celery-beat:
+    build: .
+    command: celery -A core beat -l info
+    volumes:
+      - ./myproject/:/usr/src/app/
+    environment:
+      - DEBUG=1
+      - DJANGO_ALLOWED_HOSTS=localhost 127.0.0.1 [::1]
+    depends_on:
+      - redis
+      - celery
 
 

@@ -11,6 +11,12 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+import rest_framework
+import corsheaders
+from celery.schedules import crontab
+import myproject.tasks
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,12 +31,15 @@ SECRET_KEY = 'django-insecure-8$1@*2=^k&5bu83o**)t9e^$_z4_le6q70^ai=zbcpair5az$2
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*'] # Local development 
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'rest_framework',
+    'corsheaders',
+    
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -40,6 +49,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -72,11 +82,15 @@ WSGI_APPLICATION = 'myproject.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
-
+# NOTE: Database credentials are insecure for local dev.
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'postgres',
+        'USER': 'postgres',
+        'PASSWORD': 'postgres',
+        # 'HOST': 'db',
+        'PORT': 5432,
     }
 }
 
@@ -118,6 +132,26 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# CORS
+CORS_ORIGIN_ALLOW_ALL = True 
+## Allow specific access from ports listed in whitelist.
+#CORS_ORIGIN_WHITELIST = (
+#        'http://localhost:8000', # Django
+#        'http://localhost:6379', # Redis
+#        ) # Missing celery? 
+
+# CELERY
+CELERY_BROKER_URL = "redis://redis:6379"
+CELERY_RESULT_BACKEND = "redis://redis:6379"
+
+# CELERY BEAT SCHEDULE
+CELERY_BEAT_SCHEDULE = {
+    "sample_task": {
+        "task": "myproject.tasks.sample_task",
+        "schedule": crontab(minute="*/1"), # Every minute we should see output. 
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
